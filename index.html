@@ -1,107 +1,22 @@
 <!DOCTYPE html>
 <html>
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>audioMotion-analyzer Creative Overlay Demo</title>
-	<link href="https://fonts.googleapis.com/css?family=Orbitron:900" rel="stylesheet">
-	<link href="style.css" rel="stylesheet">
-</head>
+  <head>
+    <title><%= productName %></title>
 
-<body>
-<!-- video background -->
-<video id="background-video" autoplay muted loop>
-  <source src="media/night-mist.mp4" type="video/mp4">
-</video>
+    <meta charset="utf-8">
+    <meta name="description" content="<%= productDescription %>">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, viewport-fit=cover<% } %>">
 
-<!-- camera background -->
-<video id="camera-video" autoplay muted></video>
-
-<!-- text marquee -->
-<div id="text-marquee"></div>
-
-<!-- analyzer container -->
-<div id="container"></div>
-
-<!-- controls panel -->
-<div class="controls">
-  <div class="control-group">
-    <h3>Input</h3>
-    <div class="checkbox-control">
-      <input type="checkbox" id="mic">
-      <label for="mic">🎤 Microphone</label>
-    </div>
-    <div class="range-control">
-      <label for="mic-sensitivity">Mic Sensitivity:</label>
-      <input type="range" id="mic-sensitivity" min="1" max="10" step="1" value="5" disabled>
-      <span id="mic-sensitivity-value">5</span>
-    </div>
-  </div>
-  
-  <div class="control-group">
-    <h3>Background</h3>
-    <div class="radio-control">
-      <input type="radio" id="bg-none" name="background-source" value="none">
-      <label for="bg-none">None</label>
-    </div>
-    <div class="radio-control">
-      <input type="radio" id="bg-video" name="background-source" value="video" checked>
-      <label for="bg-video">Video File</label>
-    </div>
-    <div class="radio-control">
-      <input type="radio" id="bg-camera" name="background-source" value="camera">
-      <label for="bg-camera">Camera</label>
-    </div>
-    
-    <div class="range-control">
-      <label for="video-opacity">Background Opacity:</label>
-      <input type="range" id="video-opacity" min="0" max="1" step="0.1" value="0.5">
-      <span id="video-opacity-value">0.5</span>
-    </div>
-  </div>
-  
-  <div class="control-group">
-    <h3>Text Overlay</h3>
-    <div class="text-input-control">
-      <input type="text" id="marquee-text" placeholder="Enter text to display...">
-      <button id="set-marquee">Set Text</button>
-    </div>
-    <div class="checkbox-control">
-      <input type="checkbox" id="text-toggle">
-      <label for="text-toggle">Show Text</label>
-    </div>
-    <div class="range-control">
-      <label for="text-speed">Text Speed:</label>
-      <input type="range" id="text-speed" min="1" max="10" step="1" value="5">
-      <span id="text-speed-value">5</span>
-    </div>
-    <div class="range-control">
-      <label for="text-size">Text Size:</label>
-      <input type="range" id="text-size" min="20" max="80" step="5" value="35">
-      <span id="text-size-value">35</span>
-    </div>
-  </div>
-  
-  <div class="control-group">
-    <h3>Color Overlay</h3>
-    <div class="checkbox-control">
-      <input type="checkbox" id="overlay-toggle" checked>
-      <label for="overlay-toggle">Enable Color Gradient</label>
-    </div>
-    
-    <div class="range-control">
-      <label for="bg-alpha">Color Intensity:</label>
-      <input type="range" id="bg-alpha" min="0" max="1" step="0.1" value="0.7">
-      <span id="bg-alpha-value">0.7</span>
-    </div>
-  </div>
-  
-  <button id="fullscreen">Fullscreen</button>
-</div>
-
-<!-- module info -->
-<div class="info"><a href="https://audiomotion.dev" target="_blank" rel="noopener">audioMotion-analyzer</a> <span id="version"></span></div>
-
-<script src="index.js" type="module"></script>
-</body>
+    <link rel="icon" type="image/png" sizes="128x128" href="icons/favicon-128x128.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="icons/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+    <link rel="icon" type="image/ico" href="favicon.ico">
+    <link href="https://fonts.googleapis.com/css?family=Orbitron:900" rel="stylesheet">
+  </head>
+  <body>
+    <!-- quasar:entry-point -->
+  </body>
 </html>
