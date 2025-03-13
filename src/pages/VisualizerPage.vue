@@ -29,8 +29,6 @@
             :max="10"
             :step="1"
             :disable="!useMic"
-            label
-            label-always
             class="full-width"
           />
         </div>
@@ -55,8 +53,6 @@
             :min="0"
             :max="1"
             :step="0.1"
-            label
-            label-always
             class="full-width"
           />
         </div>
@@ -88,8 +84,6 @@
             :min="1"
             :max="40"
             :step="1"
-            label
-            label-always
             class="full-width"
           />
         </div>
@@ -101,16 +95,34 @@
             :min="20"
             :max="240"
             :step="5"
-            label
-            label-always
             class="full-width"
           />
         </div>
       </div>
 
       <div class="control-group">
-        <div class="checkbox-control">
-          <q-checkbox v-model="radialInvert" label="Radial Invert" />
+        <h3>Visualization Mode</h3>
+        <div class="radio-control">
+          <q-radio v-model="visualizerMode" val="radial" label="Radial" />
+          <q-checkbox v-show="visualizerMode === 'radial'" v-model="radialInvert" label="Invert" class="ml-4" />
+        </div>
+        <div class="radio-control">
+          <q-radio v-model="visualizerMode" val="reflexBars" label="Reflex Bars" />
+        </div>
+
+        <div class="select-control">
+          <label for="gradient-select">Color Gradient:</label>
+          <q-select
+            id="gradient-select"
+            v-model="selectedGradient"
+            :options="gradientOptions"
+            dense
+            filled
+            standout
+            bg-color="white"
+            text-color="black"
+            class="full-width"
+          />
         </div>
       </div>
 
@@ -123,8 +135,6 @@
             :min="50"
             :max="100"
             :step="5"
-            label
-            label-always
             class="full-width"
           />
         </div>
@@ -179,7 +189,18 @@ export default defineComponent({
       // Audio context
       audioCtx: null,
       // Controls visibility
-      showControls: true
+      showControls: true,
+      // Visualizer mode
+      visualizerMode: 'radial',
+      // Gradient settings
+      selectedGradient: 'rainbow',
+      gradientOptions: [
+        'rainbow',
+        'classic',
+        'prism',
+        'orangered',
+        'steelblue',
+      ]
     };
   },
   watch: {
@@ -219,6 +240,12 @@ export default defineComponent({
     },
     amplitude(newVal) {
       this.updateAmplitude(newVal);
+    },
+    visualizerMode(newVal) {
+      this.updateVisualizerMode(newVal);
+    },
+    selectedGradient(newVal) {
+      this.updateSelectedGradient(newVal);
     }
   },
   mounted() {
@@ -248,16 +275,16 @@ export default defineComponent({
       this.audioMotion = new AudioMotionAnalyzer(
         this.$refs.container,
         {
-          gradient: 'rainbow',
+          gradient: this.selectedGradient,
           height: window.innerHeight, // Use full window height
           showScaleY: false,
           showScaleX: false,
           showPeaks: true,
           mode: 3,
-          lumiBars: true,
-          radial: true,
+          lumiBars: false,
+          radial: this.visualizerMode === 'radial',
           radialInvert: this.radialInvert,
-          reflexRatio: 0,
+          reflexRatio: this.visualizerMode === 'radial' ? 0 : 0.4,
           minDecibels: -150 + this.amplitude, // Calculate from amplitude setting
           maxDecibels: -25, // Default is -25
           source: this.audioCtx.createMediaElementSource(new Audio()),
@@ -484,6 +511,26 @@ export default defineComponent({
       this.audioMotion.setOptions({ minDecibels: minDb });
     },
 
+    updateVisualizerMode(mode) {
+      if (mode === 'radial') {
+        this.audioMotion.setOptions({
+          mode: 3,
+          radial: true,
+          reflexRatio: 0
+        });
+      } else { // reflex bars mode
+        this.audioMotion.setOptions({
+          mode: 3,
+          radial: false,
+          reflexRatio: 0.4
+        });
+      }
+    },
+
+    updateSelectedGradient(value) {
+      this.audioMotion.setOptions({ gradient: value });
+    },
+
     cleanup() {
       // Stop animations
       this.stopMarqueeAnimation();
@@ -687,5 +734,21 @@ export default defineComponent({
 
 .radio-control + .radio-control {
   margin-top: 8px;
+}
+
+.select-control {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+}
+
+.select-control label {
+  min-width: 120px;
+  margin-right: 10px;
+  white-space: nowrap;
+}
+
+.ml-4 {
+  margin-left: 16px;
 }
 </style>
