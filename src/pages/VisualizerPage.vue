@@ -92,9 +92,9 @@
           <q-slider
             id="text-size"
             v-model="textSize"
-            :min="20"
-            :max="240"
-            :step="5"
+            :min="80"
+            :max="340"
+            :step="10"
             class="full-width"
           />
         </div>
@@ -612,10 +612,10 @@ export default defineComponent({
   font-family: 'Orbitron', sans-serif;
   font-size: 105px;
   font-weight: 900;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 0 7px #3498db, 0 0 10px #3498db, 0 0 21px #3498db, 0 0 42px #0099ff;
   white-space: nowrap;
   pointer-events: none; /* Make sure text doesn't interfere with clicks */
-  opacity: 0.75; /* 75% opacity */
+  opacity: 0.7; /* 70% opacity */
   transition: opacity 0.5s ease-out;
 }
 
