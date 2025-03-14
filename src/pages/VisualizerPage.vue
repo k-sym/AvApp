@@ -249,57 +249,172 @@ export default defineComponent({
     }
   },
   mounted() {
-    this.initAudioMotion();
+    // Add global error handler to help debug iOS issues
+    window.onerror = (message, source, lineno, colno, error) => {
+      if (window.device && window.device.platform === 'iOS') {
+        console.error('Global error:', message, 'at', source, lineno, colno);
+        // Create visible error message for debugging
+        this.showErrorMessage(`Error: ${message} at line ${lineno}`);
+      }
+    };
 
-    // Update text size initially
-    this.$refs.textMarquee.style.fontSize = `${this.textSize}px`;
+    // Add unhandled promise rejection handler
+    window.onunhandledrejection = (event) => {
+      if (window.device && window.device.platform === 'iOS') {
+        console.error('Unhandled promise rejection:', event.reason);
+        this.showErrorMessage(`Promise error: ${event.reason}`);
+      }
+    };
 
-    // Update background opacity initially
-    this.updateVideoOpacity(this.videoOpacity);
+    try {
+      this.initAudioMotion();
 
-    // Set version info
-    this.version = AudioMotionAnalyzer.version;
+      // Update text size initially
+      this.$refs.textMarquee.style.fontSize = `${this.textSize}px`;
 
-    // Apply initial background
-    this.updateBackgroundSource(this.backgroundSource);
+      // Update background opacity initially
+      this.updateVideoOpacity(this.videoOpacity);
+
+      // Set version info
+      this.version = AudioMotionAnalyzer.version;
+
+      // Apply initial background
+      this.updateBackgroundSource(this.backgroundSource);
+
+      // Add mobile-specific event listeners
+      this.addMobileListeners();
+    } catch (error) {
+      console.error('Error in mounted hook:', error);
+      this.showErrorMessage(`Mount error: ${error.message}`);
+    }
   },
   beforeUnmount() {
     this.cleanup();
   },
   methods: {
     initAudioMotion() {
-      // Initialize audio context
-      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // Initialize audio context with iOS workaround
+      try {
+        // iOS requires user interaction to create audio context
+        // Create a dummy audio context first
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.audioCtx = new AudioContext();
 
-      // Instantiate analyzer
-      this.audioMotion = new AudioMotionAnalyzer(
-        this.$refs.container,
-        {
-          gradient: this.selectedGradient,
-          height: window.innerHeight, // Use full window height
-          showScaleY: false,
-          showScaleX: false,
-          showPeaks: true,
-          mode: 3,
-          lumiBars: false,
-          radial: this.visualizerMode === 'radial',
-          radialInvert: this.radialInvert,
-          reflexRatio: this.visualizerMode === 'radial' ? 0 : 0.4,
-          minDecibels: -150 + this.amplitude, // Calculate from amplitude setting
-          maxDecibels: -25, // Default is -25
-          source: this.audioCtx.createMediaElementSource(new Audio()),
-          audioCtx: this.audioCtx,
-          overlay: true
+        // On iOS, we need to resume the context after a user interaction
+        if (this.audioCtx.state === 'suspended') {
+          const resumeAudio = () => {
+            this.audioCtx.resume();
+
+            // Remove the event listeners once audio is resumed
+            document.removeEventListener('touchstart', resumeAudio);
+            document.removeEventListener('touchend', resumeAudio);
+            document.removeEventListener('click', resumeAudio);
+          };
+
+          document.addEventListener('touchstart', resumeAudio);
+          document.addEventListener('touchend', resumeAudio);
+          document.addEventListener('click', resumeAudio);
         }
-      );
+
+        // Instantiate analyzer
+        this.audioMotion = new AudioMotionAnalyzer(
+          this.$refs.container,
+          {
+            gradient: this.selectedGradient,
+            height: window.innerHeight, // Use full window height
+            showScaleY: false,
+            showScaleX: false,
+            showPeaks: true,
+            mode: 3,
+            lumiBars: false,
+            radial: this.visualizerMode === 'radial',
+            radialInvert: this.radialInvert,
+            reflexRatio: this.visualizerMode === 'radial' ? 0 : 0.4,
+            minDecibels: -150 + this.amplitude, // Calculate from amplitude setting
+            maxDecibels: -25, // Default is -25
+            source: this.audioCtx.createMediaElementSource(new Audio()),
+            audioCtx: this.audioCtx,
+            overlay: true
+          }
+        );
+      } catch (error) {
+        console.error('Error initializing AudioMotion:', error);
+      }
 
       // Handle window resize
       window.addEventListener('resize', () => {
-        this.audioMotion.setCanvasSize(window.innerWidth, window.innerHeight); // Use full window dimensions
+        if (this.audioMotion) {
+          this.audioMotion.setCanvasSize(window.innerWidth, window.innerHeight); // Use full window dimensions
+        }
       });
     },
 
     startMicInput() {
+      // For Cordova on mobile, we need to check if we have the Media plugin
+      if (window.cordova && window.device) {
+        // Check if we're on Android and need to request permissions
+        if (window.device.platform === 'Android' && window.cordova.plugins && window.cordova.plugins.permissions) {
+          const permissions = window.cordova.plugins.permissions;
+
+          permissions.checkPermission(permissions.RECORD_AUDIO, (status) => {
+            if (!status.hasPermission) {
+              permissions.requestPermission(permissions.RECORD_AUDIO,
+                (success) => {
+                  // Permission granted, proceed with microphone access
+                  this.initializeMicrophoneForMobile();
+                },
+                (error) => {
+                  console.error('Microphone permission denied:', error);
+                  this.useMic = false;
+                });
+            } else {
+              // Already has permission
+              this.initializeMicrophoneForMobile();
+            }
+          });
+        } else {
+          // iOS or another platform that doesn't need explicit permission checks
+          this.initializeMicrophoneForMobile();
+        }
+      } else {
+        // Web browser implementation (your existing code)
+        if (navigator.mediaDevices) {
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(stream => {
+              this.micStream = stream;
+
+              // Create microphone source
+              const micSource = this.audioCtx.createMediaStreamSource(stream);
+
+              // Create gain node for sensitivity control
+              this.micGainNode = this.audioCtx.createGain();
+              this.micGainNode.gain.value = this.micSensitivity / 5; // Adjust gain based on sensitivity
+
+              // Connect nodes
+              micSource.connect(this.micGainNode);
+
+              // Set as audio source for the analyzer
+              this.audioMotion.connectInput(this.micGainNode);
+
+              // Resume audioContext if it's suspended
+              if (this.audioCtx.state === 'suspended') {
+                this.audioCtx.resume();
+              }
+            })
+            .catch(err => {
+              console.error('Error accessing microphone:', err);
+              this.useMic = false;
+            });
+        } else {
+          console.error('mediaDevices not supported');
+          this.useMic = false;
+        }
+      }
+    },
+
+    initializeMicrophoneForMobile() {
+      // This method initializes microphone access for mobile devices using the Cordova Media plugin
+      // Note: This is a simplified implementation and might need adjustments
       if (navigator.mediaDevices) {
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
           .then(stream => {
@@ -310,7 +425,7 @@ export default defineComponent({
 
             // Create gain node for sensitivity control
             this.micGainNode = this.audioCtx.createGain();
-            this.micGainNode.gain.value = this.micSensitivity / 5; // Adjust gain based on sensitivity
+            this.micGainNode.gain.value = this.micSensitivity / 5;
 
             // Connect nodes
             micSource.connect(this.micGainNode);
@@ -318,18 +433,15 @@ export default defineComponent({
             // Set as audio source for the analyzer
             this.audioMotion.connectInput(this.micGainNode);
 
-            // Resume audioContext if it's suspended
+            // Resume audioContext if suspended
             if (this.audioCtx.state === 'suspended') {
               this.audioCtx.resume();
             }
           })
           .catch(err => {
-            console.error('Error accessing microphone:', err);
+            console.error('Error accessing microphone on mobile:', err);
             this.useMic = false;
           });
-      } else {
-        console.error('mediaDevices not supported');
-        this.useMic = false;
       }
     },
 
@@ -369,6 +481,39 @@ export default defineComponent({
         this.$refs.backgroundVideo.play();
       }
       else if (source === 'camera') {
+        this.startCameraBackground();
+      }
+    },
+
+    startCameraBackground() {
+      // For Cordova on mobile, we need to check for camera permissions
+      if (window.cordova && window.device) {
+        // Check if we're on Android and need to request permissions
+        if (window.device.platform === 'Android' && window.cordova.plugins && window.cordova.plugins.permissions) {
+          const permissions = window.cordova.plugins.permissions;
+
+          permissions.checkPermission(permissions.CAMERA, (status) => {
+            if (!status.hasPermission) {
+              permissions.requestPermission(permissions.CAMERA,
+                (success) => {
+                  // Permission granted, proceed with camera access
+                  this.initializeCameraForBackground();
+                },
+                (error) => {
+                  console.error('Camera permission denied:', error);
+                  this.backgroundSource = 'none';
+                });
+            } else {
+              // Already has permission
+              this.initializeCameraForBackground();
+            }
+          });
+        } else {
+          // iOS or another platform that doesn't need explicit permission checks
+          this.initializeCameraForBackground();
+        }
+      } else {
+        // Web browser implementation (existing code)
         if (navigator.mediaDevices) {
           navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
@@ -384,6 +529,22 @@ export default defineComponent({
           console.error('mediaDevices not supported');
           this.backgroundSource = 'none';
         }
+      }
+    },
+
+    initializeCameraForBackground() {
+      // This method initializes camera access for mobile devices
+      if (navigator.mediaDevices) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then(stream => {
+            this.cameraStream = stream;
+            this.$refs.cameraVideo.srcObject = stream;
+            this.$refs.cameraVideo.style.opacity = this.videoOpacity;
+          })
+          .catch(err => {
+            console.error('Error accessing camera on mobile:', err);
+            this.backgroundSource = 'none';
+          });
       }
     },
 
@@ -558,10 +719,142 @@ export default defineComponent({
 
       // Remove event listeners
       window.removeEventListener('resize', this.handleResize);
+
+      // Remove Cordova event listeners
+      if (window.cordova) {
+        document.removeEventListener('deviceready', this.onDeviceReady);
+        document.removeEventListener('pause', this.onPause);
+        document.removeEventListener('resume', this.onResume);
+
+        // Allow screen to sleep again
+        if (window.plugins && window.plugins.insomnia) {
+          window.plugins.insomnia.allowSleepAgain();
+        }
+      }
     },
 
     toggleControls() {
       this.showControls = !this.showControls;
+    },
+
+    addMobileListeners() {
+      // Check if we're running in Cordova
+      if (window.cordova) {
+        document.addEventListener('deviceready', this.onDeviceReady, false);
+        document.addEventListener('pause', this.onPause, false);
+        document.addEventListener('resume', this.onResume, false);
+
+        // Prevent screen from sleeping
+        if (window.plugins && window.plugins.insomnia) {
+          window.plugins.insomnia.keepAwake();
+        }
+      }
+    },
+
+    onDeviceReady() {
+      console.log('Device is ready');
+
+      // Log platform for debugging
+      if (window.device) {
+        console.log('Platform:', window.device.platform);
+        console.log('Version:', window.device.version);
+        console.log('Model:', window.device.model);
+      }
+
+      // iOS-specific fixes
+      if (window.device && window.device.platform === 'iOS') {
+        // Add a small delay to ensure all plugins are properly initialized
+        setTimeout(() => {
+          console.log('Applying iOS-specific fixes');
+
+          try {
+            // Set status bar appearance
+            if (window.StatusBar) {
+              window.StatusBar.overlaysWebView(true);
+              window.StatusBar.styleBlackTranslucent();
+              window.StatusBar.hide();
+            }
+
+            // Force a redraw on iOS
+            document.body.style.display = 'none';
+            setTimeout(() => {
+              document.body.style.display = 'block';
+            }, 50);
+
+            document.body.classList.add('ios-device');
+
+            // Force layout recalculation
+            window.dispatchEvent(new Event('resize'));
+          } catch (error) {
+            console.error('Error applying iOS fixes:', error);
+            this.showErrorMessage(`iOS fixes error: ${error.message}`);
+          }
+        }, 100);
+      } else {
+        // Non-iOS devices
+        // Set status bar appearance
+        if (window.StatusBar) {
+          window.StatusBar.overlaysWebView(true);
+          window.StatusBar.styleBlackTranslucent();
+          window.StatusBar.hide();
+        }
+      }
+
+      // Lock to landscape orientation
+      if (window.screen && window.screen.orientation) {
+        try {
+          window.screen.orientation.lock('landscape');
+        } catch (error) {
+          console.error('Error locking orientation:', error);
+        }
+      }
+    },
+
+    onPause() {
+      // App is going to background
+      if (this.audioCtx) {
+        this.audioCtx.suspend();
+      }
+
+      // Stop animations to save battery
+      if (this.audioMotion) {
+        this.audioMotion.stop();
+      }
+    },
+
+    onResume() {
+      // App is coming back to foreground
+      if (this.audioCtx && this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+
+      // Restart animations
+      if (this.audioMotion) {
+        this.audioMotion.start();
+      }
+    },
+
+    showErrorMessage(message) {
+      // Create a visible error div for debugging on iOS
+      const errorDiv = document.createElement('div');
+      errorDiv.style.position = 'fixed';
+      errorDiv.style.top = '50%';
+      errorDiv.style.left = '50%';
+      errorDiv.style.transform = 'translate(-50%, -50%)';
+      errorDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+      errorDiv.style.color = 'white';
+      errorDiv.style.padding = '20px';
+      errorDiv.style.borderRadius = '10px';
+      errorDiv.style.zIndex = '10000';
+      errorDiv.style.maxWidth = '80%';
+      errorDiv.style.textAlign = 'center';
+      errorDiv.innerText = message;
+      document.body.appendChild(errorDiv);
+
+      // Auto-remove after 8 seconds
+      setTimeout(() => {
+        document.body.removeChild(errorDiv);
+      }, 8000);
     }
   }
 });
@@ -750,5 +1043,50 @@ export default defineComponent({
 
 .ml-4 {
   margin-left: 16px;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 767px) {
+  .controls {
+    width: 80%;
+    max-width: 300px;
+  }
+
+  .range-control label {
+    min-width: 90px;
+    font-size: 14px;
+  }
+
+  #text-marquee {
+    font-size: 60px !important;
+  }
+
+  .control-group h3 {
+    font-size: 14px;
+  }
+
+  .checkbox-control,
+  .radio-control {
+    font-size: 14px;
+  }
+}
+
+/* iOS-specific styles */
+.ios-device {
+  /* Prevent iOS overscroll/bounce effect */
+  position: fixed;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text selection on mobile */
+.visualizer-page {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 </style>
