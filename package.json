@@ -10,7 +10,15 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "build": "quasar build",
-    "postinstall": "quasar prepare"
+    "postinstall": "quasar prepare",
+    "cordova-dev": "quasar dev -m cordova -T ios && ./fix-ios-index.sh && ./fix-ios-plist.sh",
+    "cordova-build": "quasar build -m cordova -T ios && ./fix-ios-index.sh && ./fix-ios-plist.sh",
+    "cordova-add-ios": "cd src-cordova && cordova platform add ios",
+    "cordova-android-dev": "quasar dev -m cordova -T android",
+    "cordova-android-build": "quasar build -m cordova -T android",
+    "cordova-add-android": "cd src-cordova && cordova platform add android",
+    "setup-cordova": "./setup-cordova.sh",
+    "fix-ios": "./fix-ios-index.sh && ./fix-ios-plist.sh"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",
