@@ -1,24 +1,88 @@
-# visualiser (visualiser)
+# Audio Visualizer App
 
-Audio Visualiser App
+A multi-platform audio visualizer application built with Vue.js, Quasar Framework, and audioMotion-analyzer.
 
-## Install the dependencies
+## Features
+
+- Real-time audio visualization with multiple modes
+- Microphone input support
+- Text marquee with customizable settings
+- Background video or camera support
+- Mobile-friendly interface
+- iOS and Android support via Cordova
+
+## Prerequisites
+
+- Node.js 18+ and npm
+- Xcode (for iOS development)
+- Android Studio (for Android development)
+- Cordova CLI (`npm install -g cordova`)
+
+## Installation
+
 ```bash
-yarn
-# or
+# Install dependencies
 npm install
 ```
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
+## Development
+
 ```bash
-quasar dev
+# Run in development mode in browser
+npm run dev
+
+# Run in development mode for iOS
+npm run cordova-dev
 ```
 
+## Building for iOS
 
-### Build the app for production
+1. Make sure you have Xcode installed
+2. Add the iOS platform to Cordova:
+
 ```bash
-quasar build
+npm run cordova-add-ios
 ```
 
-### Customize the configuration
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+3. Build the app:
+
+```bash
+npm run cordova-build
+```
+
+4. Open the Xcode project:
+
+```bash
+open src-cordova/platforms/ios/AudioVisualizer.xcworkspace
+```
+
+5. In Xcode, select your device or simulator and click the Run button
+
+## Troubleshooting
+
+### iOS Build Issues
+
+If you encounter issues with the iOS build, try the following:
+
+1. Make sure your Xcode command-line tools are up to date:
+
+```bash
+xcode-select --install
+```
+
+2. Update your CocoaPods:
+
+```bash
+sudo gem install cocoapods
+```
+
+3. Clean the Cordova project:
+
+```bash
+cd src-cordova
+cordova clean ios
+```
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
