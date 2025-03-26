@@ -2,7 +2,7 @@
   <q-page class="visualizer-page" @click="toggleControls">
     <!-- video background -->
     <video id="background-video" ref="backgroundVideo" autoplay muted loop>
-      <source src="/media/night-mist.mp4" type="video/mp4">
+      <source src="/media/default.mp4" type="video/mp4">
     </video>
 
     <!-- camera background -->
