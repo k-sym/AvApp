@@ -39,7 +39,11 @@
           <q-radio v-model="backgroundSource" val="none" label="None" />
         </div>
         <div class="radio-control">
-          <q-radio v-model="backgroundSource" val="video" label="Video File" />
+          <q-radio v-model="backgroundSource" val="video" label="Default Video" />
+        </div>
+        <div class="radio-control">
+          <q-radio v-model="backgroundSource" val="custom" label="Custom Video" />
+          <q-btn v-show="backgroundSource === 'custom'" @click="selectVideo" label="Select" dense class="ml-2" />
         </div>
         <div class="radio-control">
           <q-radio v-model="backgroundSource" val="camera" label="Camera" />
@@ -174,7 +178,8 @@ export default defineComponent({
       micGainNode: null,
       // Background settings
       backgroundSource: 'video',
-      videoOpacity: 0.5,
+      customVideoFile: null,
+      videoOpacity: 0.1,
       cameraStream: null,
       // Text marquee settings
       marqueeText: '',
@@ -334,7 +339,9 @@ export default defineComponent({
             maxDecibels: -25, // Default is -25
             source: this.audioCtx.createMediaElementSource(new Audio()),
             audioCtx: this.audioCtx,
-            overlay: true
+            overlay: false, // Disable the overlay
+            alphaBars: true, // Use alpha blending instead
+            barSpace: 0.1 // Add some space between bars
           }
         );
       } catch (error) {
@@ -476,12 +483,73 @@ export default defineComponent({
         this.cameraStream = null;
       }
 
+      // Hide analyzer when no background is selected
+      if (source === 'none') {
+        this.$refs.container.style.opacity = 0;
+      } else {
+        this.$refs.container.style.opacity = 1;
+      }
+
       if (source === 'video') {
+        this.$refs.backgroundVideo.src = '/media/default.mp4';
+        this.$refs.backgroundVideo.style.opacity = this.videoOpacity;
+        this.$refs.backgroundVideo.play();
+      }
+      else if (source === 'custom' && this.customVideoFile) {
+        const videoUrl = URL.createObjectURL(this.customVideoFile);
+        this.$refs.backgroundVideo.src = videoUrl;
         this.$refs.backgroundVideo.style.opacity = this.videoOpacity;
         this.$refs.backgroundVideo.play();
       }
       else if (source === 'camera') {
         this.startCameraBackground();
+      }
+    },
+
+    selectVideo() {
+      if (window.cordova) {
+        this.selectDeviceVideo();
+      } else {
+        this.selectLocalVideo();
+      }
+    },
+
+    selectLocalVideo() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'video/*';
+
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          this.customVideoFile = file;
+          this.updateBackgroundSource('custom');
+        }
+      };
+
+      input.click();
+    },
+
+    selectDeviceVideo() {
+      // For Cordova/PhoneGap
+      if (navigator.device && navigator.device.capture) {
+        navigator.device.capture.captureVideo(
+          (mediaFiles) => {
+            if (mediaFiles && mediaFiles.length > 0) {
+              const videoFile = new File([], mediaFiles[0].fullPath, {
+                type: mediaFiles[0].type
+              });
+              this.customVideoFile = videoFile;
+              this.updateBackgroundSource('custom');
+            }
+          },
+          (error) => {
+            console.error('Error capturing video:', error);
+          },
+          { limit: 1 }
+        );
+      } else {
+        console.error('Device capture API not available');
       }
     },
 
@@ -554,6 +622,11 @@ export default defineComponent({
       }
       else if (this.backgroundSource === 'camera') {
         this.$refs.cameraVideo.style.opacity = value;
+      }
+
+      // Update analyzer opacity based on background opacity
+      if (this.backgroundSource !== 'none') {
+        this.$refs.container.style.opacity = value;
       }
     },
 
@@ -879,6 +952,8 @@ export default defineComponent({
   width: 100%;
   height: 100%;
   z-index: 10;
+  opacity: 0; /* Start with opacity 0 */
+  transition: opacity 0.3s ease-in-out; /* Add smooth transition */
 }
 
 #background-video,
