@@ -341,7 +341,8 @@ export default defineComponent({
             audioCtx: this.audioCtx,
             overlay: false, // Disable the overlay
             alphaBars: true, // Use alpha blending instead
-            barSpace: 0.1 // Add some space between bars
+            barSpace: 0.1, // Add some space between bars
+            connectSpeakers: false // Explicitly disable speaker connection to prevent feedback
           }
         );
       } catch (error) {
@@ -403,6 +404,10 @@ export default defineComponent({
               // Set as audio source for the analyzer
               this.audioMotion.connectInput(this.micGainNode);
 
+              // Important: We're NOT connecting to the audioCtx.destination
+              // This prevents the microphone input from being played back through speakers
+              // which would cause audio feedback
+
               // Resume audioContext if it's suspended
               if (this.audioCtx.state === 'suspended') {
                 this.audioCtx.resume();
@@ -439,6 +444,10 @@ export default defineComponent({
 
             // Set as audio source for the analyzer
             this.audioMotion.connectInput(this.micGainNode);
+
+            // Important: We're NOT connecting to the audioCtx.destination
+            // This prevents the microphone input from being played back through speakers
+            // which would cause audio feedback
 
             // Resume audioContext if suspended
             if (this.audioCtx.state === 'suspended') {
